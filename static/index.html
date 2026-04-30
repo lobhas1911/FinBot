@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Finance Analysis Chatbot</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css?v=2"/>
+</head>
+<body>
+<div class="app">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">📊 FinBot</div>
+      <div class="company-badge" id="companyBadge">—</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">DATA SOURCES</div>
+      <div id="sourceList"><p class="muted">Load a company to begin.</p></div>
+    </div>
+
+    <div class="sidebar-section" id="infoPanel" style="display:none">
+      <div class="section-label">COMPANY INFO</div>
+      <div id="infoContent"></div>
+    </div>
+
+    <div class="sidebar-section" id="ratioPanel" style="display:none">
+      <div class="section-label">KEY RATIOS</div>
+      <div id="ratioContent"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <main class="main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <input type="text" id="companyInput"
+        placeholder="Enter company name (e.g. HDFC Bank, Apple, Reliance Industries, Infosys)..."
+        onkeydown="if(event.key==='Enter') loadCompany()"/>
+      <button onclick="loadCompany()" id="loadBtn">Load</button>
+      <button onclick="refreshCompany()" id="refreshBtn" title="Refresh data">↺</button>
+    </div>
+
+    <!-- Loading state -->
+    <div id="loadingBar" style="display:none" class="loading-bar">
+      <div class="loading-fill"></div>
+      <span id="loadingMsg">Fetching financial data...</span>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" id="tabs" style="display:none">
+      <button class="tab active" onclick="switchTab('analysis')">Analysis</button>
+      <button class="tab" onclick="switchTab('charts')">Charts</button>
+      <button class="tab" onclick="switchTab('specs')">Specifications</button>
+      <button class="tab" onclick="switchTab('chat')">Chat</button>
+    </div>
+
+    <!-- Analysis Tab -->
+    <div class="tab-content" id="tab-analysis" style="display:none">
+      <div class="analysis-header">
+        <h2 id="analysisTitle">Fundamental Analysis</h2>
+        <button onclick="generateAnalysis()" id="analyzeBtn" class="btn-secondary">↺ Regenerate</button>
+      </div>
+      <div id="analysisContent" class="analysis-body">
+        <p class="muted center">Loading a company will automatically generate analysis here.</p>
+      </div>
+    </div>
+
+    <!-- Charts Tab -->
+    <div class="tab-content" id="tab-charts" style="display:none">
+      <div class="charts-grid" id="chartsGrid"></div>
+    </div>
+
+    <!-- Specifications Tab -->
+    <div class="tab-content" id="tab-specs" style="display:none">
+      <div class="specs-header">
+        <h2>Specifications</h2>
+        <p class="specs-sub">Company profile, key ratios and valuation metrics</p>
+      </div>
+      <div id="specsContent" class="specs-body">
+        <p class="muted center">Load a company to view specifications.</p>
+      </div>
+    </div>
+
+    <!-- Chat Tab -->
+    <div class="tab-content" id="tab-chat" style="display:none">
+      <div class="messages" id="messages">
+        <div class="welcome">
+          <p>Ask anything about the company's financials.</p>
+          <div class="suggestions">
+            <span onclick="askSuggestion(this)">What is the revenue growth trend?</span>
+            <span onclick="askSuggestion(this)">How healthy is the balance sheet?</span>
+            <span onclick="askSuggestion(this)">What are the key risks?</span>
+            <span onclick="askSuggestion(this)">Is the stock overvalued or undervalued?</span>
+            <span onclick="askSuggestion(this)">Summarize the cash flow situation.</span>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input">
+        <textarea id="chatInput" placeholder="Ask a question..." rows="2"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"
+          disabled></textarea>
+        <button onclick="sendChat()" id="sendBtn" disabled>Send</button>
+      </div>
+    </div>
+
+    <!-- Welcome screen -->
+    <div id="welcomeScreen" class="welcome-screen">
+      <!-- Faint background chart -->
+      <div class="welcome-bg">
+        <svg class="bg-chart" viewBox="0 0 900 400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <!-- Grid lines horizontal -->
+          <line x1="0" y1="80"  x2="900" y2="80"  stroke="#10b981" stroke-width="0.5" opacity="0.15"/>
+          <line x1="0" y1="160" x2="900" y2="160" stroke="#10b981" stroke-width="0.5" opacity="0.15"/>
+          <line x1="0" y1="240" x2="900" y2="240" stroke="#10b981" stroke-width="0.5" opacity="0.15"/>
+          <line x1="0" y1="320" x2="900" y2="320" stroke="#10b981" stroke-width="0.5" opacity="0.15"/>
+          <!-- Grid lines vertical -->
+          <line x1="100" y1="0" x2="100" y2="400" stroke="#10b981" stroke-width="0.5" opacity="0.1"/>
+          <line x1="200" y1="0" x2="200" y2="400" stroke="#10b981" stroke-width="0.5" opacity="0.1"/>
+          <line x1="300" y1="0" x2="300" y2="400" stroke="#10b981" stroke-width="0.5" opacity="0.1"/>
+          <line x1="400" y1="0" x2="400" y2="400" stroke="#10b981" stroke-width="0.5" opacity="0.1"/>
+          <line x1="500" y1="0" x2="500" y2="400" stroke="#10b981" stroke-width="0.5" opacity="0.1"/>
+          <line x1="600" y1="0" x2="600" y2="400" stroke="#10b981" stroke-width="0.5" opacity="0.1"/>
+          <line x1="700" y1="0" x2="700" y2="400" stroke="#10b981" stroke-width="0.5" opacity="0.1"/>
+          <line x1="800" y1="0" x2="800" y2="400" stroke="#10b981" stroke-width="0.5" opacity="0.1"/>
+          <!-- Area fill under line -->
+          <path d="M0,300 C60,280 100,260 150,240 C200,220 230,200 280,180 C330,160 360,190 410,170 C460,150 490,120 540,110 C590,100 620,130 670,120 C720,110 760,90 810,80 C850,72 880,85 900,80 L900,400 L0,400 Z"
+            fill="url(#areaGrad)" opacity="0.08"/>
+          <!-- Main line -->
+          <path d="M0,300 C60,280 100,260 150,240 C200,220 230,200 280,180 C330,160 360,190 410,170 C460,150 490,120 540,110 C590,100 620,130 670,120 C720,110 760,90 810,80 C850,72 880,85 900,80"
+            fill="none" stroke="#10b981" stroke-width="2" opacity="0.3" stroke-linecap="round"/>
+          <!-- Secondary line -->
+          <path d="M0,340 C80,320 130,310 180,290 C230,270 270,260 320,250 C370,240 400,255 450,240 C500,225 530,200 580,195 C630,190 660,210 710,200 C760,190 800,175 850,165 C870,160 890,162 900,160"
+            fill="none" stroke="#34d399" stroke-width="1.5" opacity="0.2" stroke-linecap="round" stroke-dasharray="6,4"/>
+          <!-- Candlesticks -->
+          <g opacity="0.12" fill="#10b981">
+            <rect x="95"  y="230" width="10" height="30" rx="1"/>
+            <rect x="195" y="195" width="10" height="35" rx="1"/>
+            <rect x="295" y="155" width="10" height="40" rx="1"/>
+            <rect x="395" y="165" width="10" height="25" rx="1"/>
+            <rect x="495" y="115" width="10" height="30" rx="1"/>
+            <rect x="595" y="105" width="10" height="35" rx="1"/>
+            <rect x="695" y="115" width="10" height="20" rx="1"/>
+            <rect x="795" y="78"  width="10" height="28" rx="1"/>
+          </g>
+          <!-- Candle wicks -->
+          <g opacity="0.1" stroke="#10b981" stroke-width="1.5">
+            <line x1="100" y1="220" x2="100" y2="270"/>
+            <line x1="200" y1="185" x2="200" y2="240"/>
+            <line x1="300" y1="145" x2="300" y2="205"/>
+            <line x1="400" y1="155" x2="400" y2="200"/>
+            <line x1="500" y1="105" x2="500" y2="155"/>
+            <line x1="600" y1="95"  x2="600" y2="150"/>
+            <line x1="700" y1="108" x2="700" y2="142"/>
+            <line x1="800" y1="68"  x2="800" y2="115"/>
+          </g>
+          <!-- Dot markers on line -->
+          <circle cx="280" cy="180" r="3" fill="#10b981" opacity="0.35"/>
+          <circle cx="540" cy="110" r="3" fill="#10b981" opacity="0.35"/>
+          <circle cx="810" cy="80"  r="3" fill="#10b981" opacity="0.35"/>
+          <defs>
+            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stop-color="#10b981" stop-opacity="1"/>
+              <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <div class="welcome-content">
+        <div class="welcome-icon">📈</div>
+        <h1>Finance Analysis Chatbot</h1>
+        <p>Enter any company name below.<br/>
+        Get instant financial analysis, charts, and AI-powered insights.</p>
+        <div class="example-chips">
+          <span onclick="quickLoad('Apple')">Apple</span>
+          <span onclick="quickLoad('HDFC Bank')">HDFC Bank</span>
+          <span onclick="quickLoad('Reliance Industries')">Reliance Industries</span>
+          <span onclick="quickLoad('Microsoft')">Microsoft</span>
+          <span onclick="quickLoad('TCS')">TCS</span>
+          <span onclick="quickLoad('Infosys')">Infosys</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="/static/app.js?v=2"></script>
+</body>
+</html>
